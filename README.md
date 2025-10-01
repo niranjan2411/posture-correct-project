@@ -42,11 +42,6 @@ It then provides **live feedback** and tracks your progress over time.
 
 ---
 
-## 📷 Screenshot (example)
-*(Replace this with your actual screenshot)*  
-![Screenshot](./screenshot.png)  
-
----
 
 ## 🛠️ Tech Stack
 - [Next.js](https://nextjs.org/) (React framework)  
