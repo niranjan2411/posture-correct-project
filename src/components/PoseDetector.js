@@ -41,7 +41,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
         })
 
         pose.setOptions({
-          modelComplexity: 0, // 0 = fastest, 1 or 2 = more accurate
+          modelComplexity: 0, // fastest (0), higher = more accurate but slower
           smoothLandmarks: true,
           enableSegmentation: false,
           minDetectionConfidence: 0.5,
@@ -53,12 +53,14 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
           const canvas = canvasRef.current
           const ctx = canvas.getContext('2d')
 
-          // Match canvas size to container, not raw video size
-          canvas.width = videoRef.current.clientWidth
-          canvas.height = videoRef.current.clientHeight
+          // Match canvas size to container
+          const container = videoRef.current.parentElement
+          canvas.width = container.clientWidth
+          canvas.height = container.clientHeight
 
           ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+          // Draw video frame into canvas
           if (results.image) {
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
           }
@@ -78,7 +80,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
               )
             } catch (e) {}
 
-            // throttle posture analysis (every 300ms)
+            // throttle analysis every 300ms
             const now = Date.now()
             if (isActive && analyzerRef.current && now - lastCheck >= 300) {
               lastCheck = now
@@ -173,11 +175,11 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
     <div className="card">
       <h2 className="text-2xl font-bold mb-4">Live Camera Feed</h2>
 
-      {/* container with fixed aspect ratio for mobile */}
-      <div className="relative w-full max-w-md mx-auto aspect-[3/4] bg-black rounded-lg overflow-hidden">
+      {/* Responsive camera container */}
+      <div className="relative w-full max-w-2xl mx-auto bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
           playsInline
           muted
         />
