@@ -51,21 +51,6 @@ It then provides **live feedback** and tracks your progress over time.
 
 ---
 
-## 🔄 How It Works
-
-```mermaid
-flowchart TD
-    A[📷 Camera Input] --> B[MediaPipe Pose Model]
-    B --> C[Landmarks Extracted (33 keypoints)]
-    C --> D[Posture Analyzer (AI rules)]
-    D -->|✅ Good posture| E1[Green Feedback]
-    D -->|⚠️ Poor posture| E2[Warning Feedback]
-    D --> F[Score Calculation]
-    F --> G[📊 Progress Tracker (LocalStorage)]
-    E1 --> F
-    E2 --> F
-
-    
 
 ## 🚀 Run Locally
 
