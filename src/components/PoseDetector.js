@@ -24,6 +24,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
 
   useEffect(() => {
     let camera = null
+    let lastCheck = 0 // throttle analysis
 
     const initMediaPipe = async () => {
       try {
@@ -40,34 +41,29 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
         })
 
         pose.setOptions({
-          modelComplexity: 1,
+          modelComplexity: 0, // 0 = fastest, 1 or 2 = more accurate
           smoothLandmarks: true,
           enableSegmentation: false,
-          smoothSegmentation: false,
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5
         })
 
         pose.onResults((results) => {
           if (!canvasRef.current || !videoRef.current) return
-
           const canvas = canvasRef.current
           const ctx = canvas.getContext('2d')
 
-          // set canvas size to video size
-          const video = videoRef.current
-          canvas.width = video.videoWidth || 1280
-          canvas.height = video.videoHeight || 720
+          // Match canvas size to container, not raw video size
+          canvas.width = videoRef.current.clientWidth
+          canvas.height = videoRef.current.clientHeight
 
           ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-          // draw the incoming frame (results.image is already a HTMLImageElement/VideoFrame)
           if (results.image) {
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
           }
 
           if (results.poseLandmarks) {
-            // draw connectors & landmarks
             try {
               drawingUtils.drawConnectors(
                 ctx,
@@ -80,18 +76,16 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
                 results.poseLandmarks,
                 { color: '#FF0000', lineWidth: 1, radius: 3 }
               )
-            } catch (e) {
-              // drawing_utils sometimes exposes symbols differently - safe-guard
-            }
+            } catch (e) {}
 
-            // analyze posture if active
-            if (isActive && analyzerRef.current) {
+            // throttle posture analysis (every 300ms)
+            const now = Date.now()
+            if (isActive && analyzerRef.current && now - lastCheck >= 300) {
+              lastCheck = now
               const result = analyzerRef.current.analyzePose(results.poseLandmarks)
               setAnalysis(result)
 
-              // push score for averaging
               scoresRef.current.push(result.score)
-
               if (result.score < 70) {
                 setSessionStats(prev => ({
                   ...prev,
@@ -100,14 +94,12 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
               }
             }
           } else {
-            // no landmarks
             setAnalysis({ status: 'NO_DETECTION', alerts: ['No person detected'], score: 0 })
           }
         })
 
         poseRef.current = pose
 
-        // start camera: attach to video element
         if (videoRef.current) {
           camera = new Camera(videoRef.current, {
             onFrame: async () => {
@@ -115,8 +107,8 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
                 await poseRef.current.send({ image: videoRef.current })
               }
             },
-            width: 1280,
-            height: 720
+            width: 640,   // smaller resolution for performance
+            height: 480
           })
           await camera.start()
         }
@@ -137,14 +129,12 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
     }
   }, [])
 
-  // update analyzer on posture change
   useEffect(() => {
     if (selectedPosture) {
       analyzerRef.current = new PostureAnalyzer(POSTURE_TYPES[selectedPosture])
     }
   }, [selectedPosture])
 
-  // handle session start/stop and stats update interval
   useEffect(() => {
     if (isActive) {
       sessionStartRef.current = Date.now()
@@ -162,7 +152,6 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
 
       return () => clearInterval(interval)
     } else {
-      // session stopped: send session data to parent if long enough
       if (sessionStartRef.current) {
         const sessionData = {
           postureType: selectedPosture,
@@ -184,19 +173,20 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
     <div className="card">
       <h2 className="text-2xl font-bold mb-4">Live Camera Feed</h2>
 
-      <div className="relative bg-black rounded-lg overflow-hidden" style={{ height: 360 }}>
+      {/* container with fixed aspect ratio for mobile */}
+      <div className="relative w-full max-w-md mx-auto aspect-[3/4] bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
           className="absolute inset-0 w-full h-full object-cover"
-          style={{ display: 'none' }}
           playsInline
+          muted
         />
-        <canvas ref={canvasRef} className="w-full h-full" />
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-70">
             <div className="text-center text-white">
-              <div className="text-4xl mb-4 pulse">⌛</div>
+              <div className="text-4xl mb-4 animate-pulse">⌛</div>
               <div className="text-lg">Initializing camera...</div>
             </div>
           </div>
@@ -228,10 +218,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div className="p-3 bg-blue-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-blue-600">
-                {Math.floor(sessionStats.duration / 60)
-                  .toString()
-                  .padStart(1, '0')}
-                :
+                {Math.floor(sessionStats.duration / 60)}:
                 {(sessionStats.duration % 60).toString().padStart(2, '0')}
               </div>
               <div className="text-sm text-gray-600">Duration</div>
