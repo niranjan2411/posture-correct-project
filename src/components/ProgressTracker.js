@@ -6,20 +6,23 @@ export default function ProgressTracker({ sessionData }) {
   const [savedSessions, setSavedSessions] = useState([])
 
   useEffect(() => {
-    // Load saved sessions from localStorage
     const saved = localStorage.getItem('postureSessions')
     if (saved) {
-      setSavedSessions(JSON.parse(saved))
+      try {
+        setSavedSessions(JSON.parse(saved))
+      } catch (e) {
+        setSavedSessions([])
+      }
     }
   }, [])
 
   useEffect(() => {
-    // Save new sessions to localStorage
-    if (sessionData.length > 0) {
+    if (sessionData && sessionData.length > 0) {
       const allSessions = [...savedSessions, ...sessionData]
       localStorage.setItem('postureSessions', JSON.stringify(allSessions))
       setSavedSessions(allSessions)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionData])
 
   const formatDuration = (seconds) => {
@@ -30,19 +33,24 @@ export default function ProgressTracker({ sessionData }) {
 
   const formatDate = (isoString) => {
     const date = new Date(isoString)
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return (
+      date.toLocaleDateString() +
+      ' ' +
+      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    )
   }
 
   const totalSessions = savedSessions.length
   const avgScore = totalSessions > 0
-    ? Math.round(savedSessions.reduce((sum, s) => sum + s.averageScore, 0) / totalSessions)
+    ? Math.round(savedSessions.reduce((sum, s) => sum + (s.averageScore || 0), 0) / totalSessions)
     : 0
-  const totalTime = savedSessions.reduce((sum, s) => sum + s.duration, 0)
+
+  const totalTime = savedSessions.reduce((sum, s) => sum + (s.duration || 0), 0)
 
   return (
     <div className="card">
-      <h2 className="text-2xl font-bold mb-4">📊 Progress Tracker</h2>
-      
+      <h2 className="text-2xl font-bold mb-4">Progress Tracker</h2>
+
       {totalSessions > 0 ? (
         <>
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -50,10 +58,12 @@ export default function ProgressTracker({ sessionData }) {
               <div className="text-2xl font-bold text-purple-600">{totalSessions}</div>
               <div className="text-xs text-gray-600">Sessions</div>
             </div>
+
             <div className="p-3 bg-green-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-green-600">{avgScore}%</div>
               <div className="text-xs text-gray-600">Avg Score</div>
             </div>
+
             <div className="p-3 bg-blue-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-blue-600">{formatDuration(totalTime)}</div>
               <div className="text-xs text-gray-600">Total Time</div>
@@ -66,17 +76,17 @@ export default function ProgressTracker({ sessionData }) {
               <div key={index} className="p-3 bg-gray-50 rounded-lg text-sm">
                 <div className="flex justify-between items-start mb-1">
                   <span className="font-semibold">
-                    {session.postureType.charAt(0).toUpperCase() + session.postureType.slice(1)}
+                    {session.postureType ? session.postureType.charAt(0).toUpperCase() + session.postureType.slice(1) : 'Unknown'}
                   </span>
                   <span className={`font-bold ${
-                    session.averageScore >= 85 ? 'text-green-600' :
-                    session.averageScore >= 70 ? 'text-yellow-600' : 'text-red-600'
+                    (session.averageScore || 0) >= 85 ? 'text-green-600' :
+                    (session.averageScore || 0) >= 70 ? 'text-yellow-600' : 'text-red-600'
                   }`}>
-                    {session.averageScore}%
+                    {session.averageScore || 0}%
                   </span>
                 </div>
                 <div className="text-xs text-gray-600">
-                  {formatDuration(session.duration)} • {formatDate(session.timestamp)}
+                  {formatDuration(session.duration || 0)} • {formatDate(session.timestamp || new Date().toISOString())}
                 </div>
               </div>
             ))}
