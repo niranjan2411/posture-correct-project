@@ -24,7 +24,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
 
   useEffect(() => {
     let camera = null
-    let lastCheck = 0 // throttle analysis
+    let lastCheck = 0
 
     const initMediaPipe = async () => {
       try {
@@ -41,7 +41,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
         })
 
         pose.setOptions({
-          modelComplexity: 0, // fastest (0), higher = more accurate but slower
+          modelComplexity: 0,
           smoothLandmarks: true,
           enableSegmentation: false,
           minDetectionConfidence: 0.5,
@@ -53,17 +53,12 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
           const canvas = canvasRef.current
           const ctx = canvas.getContext('2d')
 
-          // Match canvas size to container
-          const container = videoRef.current.parentElement
-          canvas.width = container.clientWidth
-          canvas.height = container.clientHeight
-
+          canvas.width = videoRef.current.videoWidth
+          canvas.height = videoRef.current.videoHeight
           ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-          // Draw video frame into canvas
-          if (results.image) {
-            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height)
-          }
+          // show live video frame
+          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
 
           if (results.poseLandmarks) {
             try {
@@ -80,13 +75,11 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
               )
             } catch (e) {}
 
-            // throttle analysis every 300ms
             const now = Date.now()
             if (isActive && analyzerRef.current && now - lastCheck >= 300) {
               lastCheck = now
               const result = analyzerRef.current.analyzePose(results.poseLandmarks)
               setAnalysis(result)
-
               scoresRef.current.push(result.score)
               if (result.score < 70) {
                 setSessionStats(prev => ({
@@ -109,7 +102,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
                 await poseRef.current.send({ image: videoRef.current })
               }
             },
-            width: 640,   // smaller resolution for performance
+            width: 640,
             height: 480
           })
           await camera.start()
@@ -117,8 +110,7 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
 
         setIsLoading(false)
       } catch (err) {
-        console.error('MediaPipe init error', err)
-        setError('Failed to initialize camera. Allow camera access and refresh.')
+        setError('Failed to initialize camera')
         setIsLoading(false)
       }
     }
@@ -148,7 +140,6 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
         const avgScore = scoresRef.current.length > 0
           ? Math.round(scoresRef.current.reduce((a, b) => a + b, 0) / scoresRef.current.length)
           : 0
-
         setSessionStats(prev => ({ ...prev, duration, averageScore: avgScore }))
       }, 1000)
 
@@ -169,21 +160,20 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
       sessionStartRef.current = null
       setAnalysis(null)
     }
-  }, [isActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isActive])
 
   return (
     <div className="card">
       <h2 className="text-2xl font-bold mb-4">Live Camera Feed</h2>
 
-      {/* Responsive camera container */}
       <div className="relative w-full max-w-2xl mx-auto bg-black rounded-lg overflow-hidden">
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-contain"
+          className="hidden"
           playsInline
           muted
         />
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+        <canvas ref={canvasRef} className="w-full h-full" />
 
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-70">
@@ -216,7 +206,6 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
       {isActive && (
         <>
           <RealTimeFeedback analysis={analysis} sessionStats={sessionStats} />
-
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div className="p-3 bg-blue-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-blue-600">
@@ -225,12 +214,10 @@ export default function PoseDetector({ selectedPosture, isActive, onSessionCompl
               </div>
               <div className="text-sm text-gray-600">Duration</div>
             </div>
-
             <div className="p-3 bg-green-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-green-600">{sessionStats.averageScore}%</div>
               <div className="text-sm text-gray-600">Avg Score</div>
             </div>
-
             <div className="p-3 bg-orange-50 rounded-lg text-center">
               <div className="text-2xl font-bold text-orange-600">{sessionStats.poorPostureTime}s</div>
               <div className="text-sm text-gray-600">Poor Time</div>
