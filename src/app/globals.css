@@ -95,3 +95,9 @@ body {
 .pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+/* Add this class */
+.alert-info {
+  background: #E0F2FE; /* light-blue-100 */
+  color: #0C4A6E; /* cyan-800 */
+  border-left: 4px solid #3B82F6; /* blue-500 */
+}
