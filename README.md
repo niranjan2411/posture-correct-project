@@ -1,7 +1,6 @@
 # 🧍‍♂️ Posture Correction App  
 [👉 Live Demo](https://posture-correct-project.vercel.app/)  
 
-⚠️ **Note:** This is a **fully AI-generated project**, created for **learning and educational purposes only**.  
 
 ---
 
