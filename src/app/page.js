@@ -24,6 +24,9 @@ export default function Home() {
         <p className="text-xl text-white opacity-90">
           Real-time posture analysis with personalized feedback
         </p>
+     <p className="text-xl text-white opacity-90">
+          Created by Mehul Mansi and Aditi
+        </p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
